@@ -2,7 +2,7 @@
 /**
  * Plugin Name: HTR External Links Extractor
  * Description: استخراج و مدیریت لینک‌های خارجی سایت
- * Version: 2.0.0
+ * Version: 3.0.0
  * Author: HTR Team
  * License: GPL v2 or later
  * Requires at least: 5.0
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ثابت‌های پلاگین
-define('HTR_EL_VERSION', '2.0.0');
+define('HTR_EL_VERSION', '3.0.0');
 define('HTR_EL_DIR', plugin_dir_path(__FILE__));
 define('HTR_EL_URL', plugin_dir_url(__FILE__));
 define('HTR_EL_INCLUDES', HTR_EL_DIR . 'includes/');
