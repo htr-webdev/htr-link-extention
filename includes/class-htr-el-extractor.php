@@ -18,6 +18,7 @@ class HTR_EL_Extractor {
 
         try {
             HTR_EL_Repository::truncate_links();
+            HTR_EL_Repository::clear_logs();
 
             self::scan_posts();
             self::scan_pages();
@@ -26,11 +27,11 @@ class HTR_EL_Extractor {
             self::scan_custom_post_types();
 
             HTR_EL_Repository::set_scan_status(false);
-            self::log('اسکن کامل با موفقیت انجام شد');
+            self::log('اسکن کامل با موفقیت انجام شد', 'success');
 
             return true;
         } catch (Exception $e) {
-            self::log('❌ خطا در اسکن: ' . $e->getMessage());
+            self::log('❌ خطا در اسکن: ' . $e->getMessage(), 'error');
             HTR_EL_Repository::set_scan_status(false);
             return false;
         }
@@ -81,7 +82,7 @@ class HTR_EL_Extractor {
      */
     private static function scan_woocommerce_products() {
         if (!class_exists('WooCommerce')) {
-            self::log('⚠️ WooCommerce فعال نیست، اسکن محصولات نشد');
+            self::log('⚠️ WooCommerce فعال نیست، اسکن محصولات نشد', 'warning');
             return;
         }
 
@@ -208,7 +209,7 @@ class HTR_EL_Extractor {
         $categories = get_terms($args);
 
         if (is_wp_error($categories)) {
-            self::log('⚠️ خطا در دریافت دسته‌بندی‌های محصول');
+            self::log('⚠️ خطا در دریافت دسته‌بندی‌های محصول', 'error');
             return;
         }
 
@@ -261,12 +262,13 @@ class HTR_EL_Extractor {
     }
 
     /**
-     * لوگ‌کردن در debug.log
+     * لوگ‌کردن در debug.log و دیتابیس
      */
-    private static function log($message) {
+    private static function log($message, $type = 'info') {
         if (defined('WP_DEBUG') && WP_DEBUG && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
             error_log('[HTR-EL] ' . $message);
         }
+        HTR_EL_Repository::add_log($type, $message);
     }
 }
 ?>

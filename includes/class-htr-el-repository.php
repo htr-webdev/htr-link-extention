@@ -12,6 +12,7 @@ class HTR_EL_Repository {
     private static $instance = null;
     public static $table_links;
     public static $table_stats;
+    public static $table_logs;
 
     public static function init() {
         global $wpdb;
@@ -22,6 +23,7 @@ class HTR_EL_Repository {
 
         self::$table_links = $wpdb->prefix . 'htr_el_external_links';
         self::$table_stats = $wpdb->prefix . 'htr_el_stats';
+        self::$table_logs = $wpdb->prefix . 'htr_el_logs';
 
         return self::$instance;
     }
@@ -65,8 +67,17 @@ class HTR_EL_Repository {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) $charset;";
 
+        // جدول لاگ‌ها
+        $sql_logs = "CREATE TABLE IF NOT EXISTS " . self::$table_logs . " (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            type VARCHAR(20) NOT NULL,
+            message TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) $charset;";
+
         dbDelta($sql_links);
         dbDelta($sql_stats);
+        dbDelta($sql_logs);
 
         // ایجاد ردیف اولیه آمار
         $exists = $wpdb->get_var("SELECT COUNT(*) FROM " . self::$table_stats);
@@ -136,42 +147,129 @@ class HTR_EL_Repository {
     /**
      * بازیابی لینک‌ها (با صفحه‌بندی و فیلتر)
      */
-    public static function get_links($page = 1, $per_page = 50, $content_type = '') {
+    public static function get_links($page = 1, $per_page = 50, $content_type = '', $search = '', $source_url = '', $order = 'DESC') {
         global $wpdb;
 
         $offset = ($page - 1) * $per_page;
+        
+        $where_clauses = [];
+        $values = [];
 
         if ($content_type) {
-            $query = $wpdb->prepare(
-                "SELECT * FROM " . self::$table_links . " WHERE content_type = %s ORDER BY created_at DESC LIMIT %d OFFSET %d",
-                [$content_type, $per_page, $offset]
-            );
-        } else {
-            $query = $wpdb->prepare(
-                "SELECT * FROM " . self::$table_links . " ORDER BY created_at DESC LIMIT %d OFFSET %d",
-                [$per_page, $offset]
-            );
+            $where_clauses[] = "content_type = %s";
+            $values[] = $content_type;
         }
 
-        return $wpdb->get_results($query);
+        if ($search) {
+            $where_clauses[] = "(url LIKE %s OR anchor_text LIKE %s)";
+            $search_like = '%' . $wpdb->esc_like($search) . '%';
+            $values[] = $search_like;
+            $values[] = $search_like;
+        }
+
+        if ($source_url) {
+            $where_clauses[] = "source_url LIKE %s";
+            $values[] = '%' . $wpdb->esc_like($source_url) . '%';
+        }
+
+        $where = '';
+        if (!empty($where_clauses)) {
+            $where = "WHERE " . implode(' AND ', $where_clauses);
+        }
+
+        $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
+
+        $query = "SELECT * FROM " . self::$table_links . " $where ORDER BY created_at $order LIMIT %d OFFSET %d";
+        $values[] = $per_page;
+        $values[] = $offset;
+
+        return $wpdb->get_results($wpdb->prepare($query, $values));
     }
 
     /**
      * شمارش کل لینک‌ها
      */
-    public static function count_links($content_type = '') {
+    public static function count_links($content_type = '', $search = '', $source_url = '') {
         global $wpdb;
 
+        $where_clauses = [];
+        $values = [];
+
         if ($content_type) {
-            $query = $wpdb->prepare(
-                "SELECT COUNT(*) FROM " . self::$table_links . " WHERE content_type = %s",
-                [$content_type]
-            );
-        } else {
-            $query = "SELECT COUNT(*) FROM " . self::$table_links;
+            $where_clauses[] = "content_type = %s";
+            $values[] = $content_type;
+        }
+
+        if ($search) {
+            $where_clauses[] = "(url LIKE %s OR anchor_text LIKE %s)";
+            $search_like = '%' . $wpdb->esc_like($search) . '%';
+            $values[] = $search_like;
+            $values[] = $search_like;
+        }
+
+        if ($source_url) {
+            $where_clauses[] = "source_url LIKE %s";
+            $values[] = '%' . $wpdb->esc_like($source_url) . '%';
+        }
+
+        $where = '';
+        if (!empty($where_clauses)) {
+            $where = "WHERE " . implode(' AND ', $where_clauses);
+        }
+
+        $query = "SELECT COUNT(*) FROM " . self::$table_links . " $where";
+
+        if (!empty($values)) {
+            $query = $wpdb->prepare($query, $values);
         }
 
         return (int) $wpdb->get_var($query);
+    }
+
+    /**
+     * ثبت لاگ در دیتابیس
+     */
+    public static function add_log($type, $message) {
+        global $wpdb;
+        $wpdb->insert(
+            self::$table_logs,
+            [
+                'type' => $type,
+                'message' => $message
+            ],
+            ['%s', '%s']
+        );
+    }
+
+    /**
+     * دریافت لاگ‌ها
+     */
+    public static function get_logs($page = 1, $per_page = 50) {
+        global $wpdb;
+        $offset = ($page - 1) * $per_page;
+        
+        $query = $wpdb->prepare(
+            "SELECT * FROM " . self::$table_logs . " ORDER BY created_at DESC LIMIT %d OFFSET %d",
+            $per_page,
+            $offset
+        );
+        return $wpdb->get_results($query);
+    }
+
+    /**
+     * پاک کردن لاگ‌ها
+     */
+    public static function clear_logs() {
+        global $wpdb;
+        $wpdb->query("TRUNCATE TABLE " . self::$table_logs);
+    }
+
+    /**
+     * شمارش لاگ‌ها
+     */
+    public static function count_logs() {
+        global $wpdb;
+        return (int) $wpdb->get_var("SELECT COUNT(*) FROM " . self::$table_logs);
     }
 
     /**

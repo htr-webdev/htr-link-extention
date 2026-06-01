@@ -35,6 +35,62 @@
         e.preventDefault();
         self.handleScan();
       });
+
+      // جستجوی زنده
+      var debounceTimer;
+      $("#htr-el-search, #htr-el-source-url").on("input", function () {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () {
+          self.fetchFilteredData();
+        }, 500);
+      });
+
+      $("#htr-el-content-type").on("change", function () {
+        self.fetchFilteredData();
+      });
+
+      $(document).on("click", "#htr-el-sort-date", function (e) {
+        e.preventDefault();
+        var newOrder = $(this).data("order");
+        $("#htr-el-order").val(newOrder);
+        self.fetchFilteredData();
+      });
+    },
+
+    /**
+     * واکشی داده‌های فیلتر شده (جستجوی زنده)
+     */
+    fetchFilteredData: function () {
+      var $form = $("#htr-el-filter-form");
+      if (!$form.length) return;
+      
+      var url = new URL(window.location.href);
+      var formData = new FormData($form[0]);
+      
+      // Update URL parameters
+      for (var pair of formData.entries()) {
+        if (pair[1]) {
+          url.searchParams.set(pair[0], pair[1]);
+        } else {
+          url.searchParams.delete(pair[0]);
+        }
+      }
+      
+      // Reset page to 1 on filter
+      url.searchParams.delete('paged');
+
+      // Update browser history
+      window.history.replaceState({}, '', url);
+
+      // Fetch new content
+      $.get(url.href, function (response) {
+        var $newContent = $(response).find(".htr-el-container");
+        if ($newContent.length) {
+          $(".htr-el-container").html($newContent.html());
+          // Re-cache elements
+          htrElDashboard.cacheElements();
+        }
+      });
     },
 
     /**
