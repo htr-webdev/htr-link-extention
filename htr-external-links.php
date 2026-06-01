@@ -105,7 +105,7 @@ class HTR_External_Links_Extractor {
             $wpdb->insert($this->table_name_stats, [
                 'total_links' => 0,
                 'total_pages_with_links' => 0,
-                'scan_in_progress' => FALSE
+                'scan_in_progress' => 0
             ]);
         }
     }
@@ -369,7 +369,7 @@ class HTR_External_Links_Extractor {
         global $wpdb;
 
         // تنظیم وضعیت اسکن
-        $wpdb->update($this->table_name_stats, ['scan_in_progress' => TRUE], [], ['%d']);
+        $wpdb->update($this->table_name_stats, ['scan_in_progress' => 1], [], ['%d']);
 
         // پاک کردن داده‌های قدیمی
         $wpdb->query("TRUNCATE TABLE {$this->table_name_links}");
@@ -380,9 +380,9 @@ class HTR_External_Links_Extractor {
 
         // به‌روز رسانی زمان آخرین اسکن و خروج از وضعیت اسکن
         $wpdb->update($this->table_name_stats, [
-            'scan_in_progress' => FALSE,
+            'scan_in_progress' => 0,
             'last_scan_time' => current_time('mysql')
-        ], [], ['%d', '%s']);
+        ], ['%d', '%s']);
 
         return true;
     }
@@ -529,18 +529,40 @@ class HTR_External_Links_Extractor {
 
         // فیلتر
         $content_type_filter = isset($_GET['content_type']) ? sanitize_text_field($_GET['content_type']) : '';
-        $where = '';
+        $where_clause = '';
+        $where_array = [];
+
         if ($content_type_filter) {
-            $where = $wpdb->prepare("WHERE content_type = %s", $content_type_filter);
+            $where_clause = "WHERE content_type = %s";
+            $where_array[] = $content_type_filter;
         }
 
         // گرفتن لینک‌ها
-        $links = $wpdb->get_results(
-            "SELECT * FROM {$this->table_name_links} {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d",
-            [$per_page, $offset]
-        );
+        if ($where_clause) {
+            $query = $wpdb->prepare(
+                "SELECT * FROM {$this->table_name_links} {$where_clause} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                array_merge($where_array, [$per_page, $offset])
+            );
+        } else {
+            $query = $wpdb->prepare(
+                "SELECT * FROM {$this->table_name_links} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                [$per_page, $offset]
+            );
+        }
 
-        $total_items = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name_links} {$where}");
+        $links = $wpdb->get_results($query);
+
+        // گرفتن تعداد کل
+        if ($where_clause) {
+            $count_query = $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->table_name_links} {$where_clause}",
+                $where_array
+            );
+        } else {
+            $count_query = "SELECT COUNT(*) FROM {$this->table_name_links}";
+        }
+
+        $total_items = $wpdb->get_var($count_query);
         $total_pages = ceil($total_items / $per_page);
 
         echo '<div class="htr-container">';
@@ -626,8 +648,10 @@ class HTR_External_Links_Extractor {
             if ($total_pages > 1) {
                 echo '<div class="htr-pagination">';
 
+                $base_url = admin_url('admin.php?page=htr-external-links');
+
                 for ($i = 1; $i <= $total_pages; $i++) {
-                    $page_url = add_query_arg('paged', $i);
+                    $page_url = add_query_arg('paged', $i, $base_url);
                     if ($content_type_filter) {
                         $page_url = add_query_arg('content_type', $content_type_filter, $page_url);
                     }
