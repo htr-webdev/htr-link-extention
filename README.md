@@ -133,6 +133,40 @@ var htrElDashboard = {
 
 ---
 
+## 🔍 انواع محتوای پشتیبانی‌شده
+
+| نوع | کد | توضیح |
+|------|------|------|
+| 📝 پست | `post` | مقالات وبلاگ |
+| 📄 صفحات | `page` | صفحات استاتیک |
+| 🛒 محصولات | `product` | محصولات WooCommerce |
+| 📁 دسته محصول | `product_cat` | دسته‌بندی‌های محصول |
+| 🎯 Custom Types | `custom_*` | انواع محتوای سفارشی |
+
+### استخراج Anchor Text
+
+افزونه متن داخل تگ‌های `<a>` را استخراج می‌کند:
+
+```html
+<a href="https://example.com">متن قابل کلیک</a>
+                         ↓ ↓ ↓
+                    متن لینک ذخیره می‌شود
+```
+
+---
+
+## 📊 ستون‌های جدول
+
+| ستون | توضیح |
+|------|------|
+| لینک خارجی | URL کامل لینک خارجی (اول 45 کاراکتر) |
+| متن لینک (Anchor Text) | متن نمایشی داخل تگ `<a>` (اول 35 کاراکتر) |
+| صفحه منبع | لینک به صفحه‌ای که لینک در آن قرار دارد |
+| نوع | نوع محتوایی که شامل لینک است |
+| تاریخ | تاریخ اضافه‌شدن لینک (بدون ساعت) |
+
+---
+
 ## 🚀 نحوه استفاده
 
 ### 1. حذف نسخه قدیم
@@ -210,9 +244,9 @@ add_action('wp_ajax_htr_el_scan', [$this, 'ajax_scan']);
    ↓
 5. HTR_EL_Extractor::run_scan()
    ↓
-6. Scan posts/pages/products
+6. Scan posts/pages/products/categories/custom types
    ↓
-7. Extract external links
+7. Extract external links with anchor text
    ↓
 8. HTR_EL_Repository::save_links()
    ↓
@@ -258,6 +292,10 @@ add_action('wp_ajax_htr_el_scan', [$this, 'ajax_scan']);
 - ✅ واکنش‌پذیری کامل
 - ✅ RTL support
 - ✅ لوگ‌گیری خطاها
+- ✅ اسکن دسته‌بندی‌های محصول
+- ✅ پشتیبانی از Custom Post Types
+- ✅ استخراج Anchor Text
+- ✅ جدول HTML حرفه‌ای
 
 ---
 

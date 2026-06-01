@@ -45,7 +45,7 @@ class HTR_EL_Repository {
             source_url VARCHAR(2048) NOT NULL,
             source_post_id BIGINT UNSIGNED NOT NULL,
             content_type VARCHAR(50) NOT NULL,
-            post_title VARCHAR(255),
+            anchor_text VARCHAR(500),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_link_source (url(255), source_post_id),

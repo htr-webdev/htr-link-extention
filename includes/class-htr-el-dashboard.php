@@ -160,6 +160,7 @@ class HTR_EL_Dashboard {
                     <option value="post" <?php selected($content_type, 'post'); ?>>📝 پست</option>
                     <option value="page" <?php selected($content_type, 'page'); ?>>📄 صفحه</option>
                     <option value="product" <?php selected($content_type, 'product'); ?>>🛒 محصول</option>
+                    <option value="product_cat" <?php selected($content_type, 'product_cat'); ?>>📁 دسته محصول</option>
                 </select>
 
                 <button type="submit" class="htr-el-button">🔍 فیلتر</button>
@@ -187,11 +188,11 @@ class HTR_EL_Dashboard {
             <table class="htr-el-table">
                 <thead>
                     <tr>
-                        <th width="35%">لینک خارجی</th>
+                        <th width="30%">لینک خارجی</th>
+                        <th width="25%">متن لینک (Anchor Text)</th>
                         <th width="20%">صفحه منبع</th>
-                        <th width="25%">عنوان صفحه</th>
-                        <th width="10%">نوع</th>
-                        <th width="10%">تاریخ</th>
+                        <th width="12%">نوع</th>
+                        <th width="13%">تاریخ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -202,12 +203,14 @@ class HTR_EL_Dashboard {
                                     <?php echo esc_html(substr($link->url, 0, 45)); ?>...
                                 </a>
                             </td>
+                            <td title="<?php echo esc_attr($link->anchor_text); ?>">
+                                <?php echo esc_html(substr($link->anchor_text, 0, 35)) ?: '(بدون متن)'; ?>
+                            </td>
                             <td>
                                 <a href="<?php echo esc_url($link->source_url); ?>" target="_blank" class="htr-el-source-link">
                                     🔗 نمایش
                                 </a>
                             </td>
-                            <td><?php echo esc_html($link->post_title); ?></td>
                             <td>
                                 <span class="htr-el-badge htr-el-badge-<?php echo esc_attr($link->content_type); ?>">
                                     <?php echo esc_html($this->get_type_label($link->content_type)); ?>
@@ -252,7 +255,8 @@ class HTR_EL_Dashboard {
         $labels = [
             'post' => '📝 پست',
             'page' => '📄 صفحه',
-            'product' => '🛒 محصول'
+            'product' => '🛒 محصول',
+            'product_cat' => '📁 دسته محصول'
         ];
 
         return $labels[$type] ?? $type;

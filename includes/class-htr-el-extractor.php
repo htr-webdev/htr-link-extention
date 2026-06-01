@@ -22,6 +22,8 @@ class HTR_EL_Extractor {
             self::scan_posts();
             self::scan_pages();
             self::scan_woocommerce_products();
+            self::scan_woocommerce_categories();
+            self::scan_custom_post_types();
 
             HTR_EL_Repository::set_scan_status(false);
             self::log('اسکن کامل با موفقیت انجام شد');
@@ -141,13 +143,14 @@ class HTR_EL_Extractor {
         $parsed_home = wp_parse_url($home_url);
         $home_domain = strtolower($parsed_home['host'] ?? '');
 
-        // regex برای یافتن تمام تگ‌های a
-        if (!preg_match_all('/<a\s+(?:[^>]*?\s+)?href=(["\'])(.+?)\1/i', $content, $matches)) {
+        // regex برای یافتن تمام تگ‌های a با anchor text
+        if (!preg_match_all('/<a\s+(?:[^>]*?\s+)?href=(["\'])(.+?)\1[^>]*>([^<]+)<\/a>/i', $content, $matches)) {
             return $links;
         }
 
-        foreach ($matches[2] as $url) {
+        foreach ($matches[2] as $index => $url) {
             $url = trim($url);
+            $anchor_text = isset($matches[3][$index]) ? trim(strip_tags($matches[3][$index])) : '';
 
             // نادیده گرفتن URL‌های خالی و لنگرها
             if (empty($url) || $url[0] === '#') {
@@ -166,7 +169,7 @@ class HTR_EL_Extractor {
                     'source_url' => get_permalink($post_id),
                     'source_post_id' => $post_id,
                     'content_type' => $content_type,
-                    'post_title' => $post_title
+                    'anchor_text' => substr($anchor_text, 0, 500)
                 ];
             }
         }
@@ -187,6 +190,74 @@ class HTR_EL_Extractor {
 
         // بررسی اینکه دامنه صفحه منبع نیست
         return $domain !== $home_domain && strpos($domain, $home_domain) === false;
+    }
+
+    /**
+     * اسکن دسته‌بندی‌های WooCommerce
+     */
+    private static function scan_woocommerce_categories() {
+        if (!class_exists('WooCommerce')) {
+            return;
+        }
+
+        $args = [
+            'taxonomy' => 'product_cat',
+            'hide_empty' => false
+        ];
+
+        $categories = get_terms($args);
+
+        if (is_wp_error($categories)) {
+            self::log('⚠️ خطا در دریافت دسته‌بندی‌های محصول');
+            return;
+        }
+
+        foreach ($categories as $category) {
+            $description = $category->description;
+
+            if (!empty($description)) {
+                $links = self::extract_links($description, $category->term_id, $category->name, 'product_cat');
+                if (!empty($links)) {
+                    HTR_EL_Repository::save_links($links);
+                }
+            }
+        }
+
+        self::log('✅ اسکن ' . count($categories) . ' دسته محصول کامل شد');
+    }
+
+    /**
+     * اسکن post types سفارشی
+     */
+    private static function scan_custom_post_types() {
+        $excluded_types = ['post', 'page', 'product', 'attachment', 'nav_menu_item'];
+        $post_types = get_post_types(['public' => true], 'objects');
+
+        $count = 0;
+
+        foreach ($post_types as $post_type) {
+            if (in_array($post_type->name, $excluded_types)) {
+                continue;
+            }
+
+            $args = [
+                'post_type' => $post_type->name,
+                'posts_per_page' => -1,
+                'post_status' => 'publish',
+                'fields' => 'ids'
+            ];
+
+            $posts = get_posts($args);
+
+            foreach ($posts as $post_id) {
+                self::process_post($post_id, $post_type->name);
+                $count++;
+            }
+        }
+
+        if ($count > 0) {
+            self::log('✅ اسکن ' . $count . ' مورد از post types سفارشی کامل شد');
+        }
     }
 
     /**
