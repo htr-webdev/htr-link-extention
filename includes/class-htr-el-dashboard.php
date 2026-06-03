@@ -314,8 +314,8 @@ class HTR_EL_Dashboard {
                                     <?php echo esc_html(substr($link->url, 0, 45)); ?>...
                                 </a>
                             </td>
-                            <td title="<?php echo esc_attr($link->anchor_text); ?>">
-                                <?php echo esc_html(substr($link->anchor_text, 0, 35)) ?: '(بدون متن)'; ?>
+                            <td title="<?php echo esc_attr($link->anchor_text ?? ''); ?>">
+                                <?php echo esc_html(substr($link->anchor_text ?? '', 0, 35)) ?: '(بدون متن)'; ?>
                             </td>
                             <td>
                                 <a href="<?php echo esc_url($link->source_url); ?>" target="_blank" class="htr-el-source-link">
